@@ -12,93 +12,223 @@
 
 perforation_density_in_percent = 1; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
 
-perforation_diameter = 0.4; // must be sub-milimeter to be effective. A challenge for Fused Deposition 3D printers.
+perforation_size = 0.8; // must be sub-milimeter to be effective. Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the dual layer technique.
 
-//perforation_surface =  PI*pow((perforation_diameter/2), 2);// forget the circles
+perforation_surface = perforation_size*perforation_size;
 
-perforation_surface = perforation_diameter*perforation_diameter;
-
-panel_thickness = 0.4; // must be equal or slightly more than perforation diameter according to [ref needed - check if it's not the revers !]
+panel_thickness = 0.8; // must be equal or slightly more than perforation diameter according to the litterature [ref needed - check if it's not the reverse !]
 
 panel_size = 50;
-
 panel_surface = panel_size*panel_size;
 
+// Back
+back_depth = 60 ;
 
-// we need a poisson-disc uniform distribution 
-// but let's start with a basic, pure random distribution that will be widly inexact because of clustering and super-imposing holes.
-// But: Given hole_density give me random points to get aproximatively this density.
+// Cone back
+cone_front_opening = 25 ;
+cone_ratio = 3 ;
+cone_back_opening = cone_front_opening / cone_ratio ;
+cone_plus_spacing = cone_front_opening + 0.5 ;
+cone_by_lines = panel_size / cone_plus_spacing ;
 
-number_of_perforations = round( panel_surface * (perforation_density_in_percent/100) /perforation_surface ); 
+
+// PERFORATIONS //
+
+// Given hole_density give me number of perforations to get this density.
+// It should be turned into an utility function so we can vary the number of perforations on multipanel structures
+
+number_of_perforations = ceil ( panel_surface * (perforation_density_in_percent/100) /perforation_surface ); 
+
+// Given a number of perforations needed, how much on each line if perforated on a square surface?
+
+function perforations_by_line_in_square (your_number_of_perforations) = ceil ( sqrt(your_number_of_perforations) ) ;
 
 // we make perforation positions a function so we can call it repeatedly when producing many modules at once, avoiding the same pattern of perforations on all modules
 
-// we need to align the holes on a grid to better work with filament deposition
+// aligned on an uniform grid
 
-function perforations_positions(your_number_of_perforations, size_to_cover) = 
+function perforations_positions (your_number_of_perforations, size_to_cover) = 
 
-    [for (i = [ 1:your_number_of_perforations ]) 
-        let ( 
-            grid_size = size_to_cover/perforation_diameter, 
+    [for (
+        
+     x_order = [ 1:perforations_by_line_in_square (your_number_of_perforations) ], 
+     y_order = [ 1:perforations_by_line_in_square (your_number_of_perforations) ]
     
-           // rands return a vector/array. we get the value out with [0]    
-           
-            x= perforation_diameter * round((rands(0, grid_size, 1)[0])), 
+          ) 
+        
+     let ( 
     
-            y= perforation_diameter * round((rands(0, grid_size, 1)[0])) 
+     perforations_by_line = perforations_by_line_in_square (your_number_of_perforations),
+    
+     grid_size = size_to_cover / perforations_by_line, 
 
-            ) 
+     x= grid_size*x_order - grid_size/2, 
     
-            [ x, y ] 
+     y= grid_size*y_order - grid_size/2
+
+           ) 
+
+     [ x, y ] 
+
     ];
 
 
 module perforations (perforation_coordinates){
     
-    for ( i=[ 0:len(perforation_coordinates) ] ) 
+    for ( i=[ 0:len(perforation_coordinates)-1 ] ) 
         translate ([ perforation_coordinates[i][0], perforation_coordinates[i][1], 0 ])
-            square (perforation_diameter);
+            square (perforation_size);
         
     
     }
 
-module panel_front(){
+module panel_front(type) {
+    if (type == "onelayer") { panel_front_one_layer_with_single_holes() ; }
+    else { panel_front_two_layers_with_grooves () ; }
+    }   
+
+
+module panel_front_one_layer_with_single_holes(){
     
     local_perforation_coordinates = perforations_positions(
             your_number_of_perforations=number_of_perforations, 
             size_to_cover=panel_size);
-   
+    
+   echo ("Perforations coordinates", local_perforation_coordinates );
     
   linear_extrude (height= panel_thickness) difference () {
         square(panel_size);
-        perforations(local_perforation_coordinates);
+        #perforations (local_perforation_coordinates);
+    } 
+   
+    }
+    
+    
+
+module perforations_using_grooves (perforation_coordinates) {
+
+    for ( i=[ 0:len(perforation_coordinates)-1 ] ) {
+        
+        translate ([ perforation_coordinates[i][0], 0, 0]) // x index
+    
+            cube ([perforation_size, panel_size, panel_thickness/2]);
+
+        translate ([ 0, perforation_coordinates[i][1], panel_thickness/2 ]) // y index
+    
+            cube ([panel_size, perforation_size, panel_thickness/2]);
+    }
+    
+    
+    }
+    
+
+module panel_front_two_layers_with_grooves () {
+   
+    
+    local_perforation_coordinates = perforations_positions(
+            your_number_of_perforations=number_of_perforations, 
+            size_to_cover=panel_size);
+    
+   echo ("Perforations coordinates", local_perforation_coordinates );
+    
+difference () {
+          linear_extrude (height= panel_thickness) square(panel_size);
+        #perforations_using_grooves (local_perforation_coordinates);
     } 
     
+    }   
+    
+
+
+// CONE BACK //
+
+function cone_coordinates () =  
+
+    [for (
+        
+     x_order = [ 0:cone_by_lines ], 
+     y_order = [ 0:cone_by_lines ]
+    
+          ) 
+        
+     let ( 
+    
+
+     x= cone_plus_spacing * x_order, 
+    
+     y= cone_plus_spacing * y_order
+
+           ) 
+
+     [ x, y ] 
+
+    ];
+
+module cone_back(outer_height, large_diameter, small_diameter){
+    
+    $fn = 24 ;
      
-    }
+    positions = cone_coordinates() ;
+    
+    echo ( "small_diameter", small_diameter) ;
+    echo ( "large_diameter", large_diameter) ;
+        
+    echo ( "Cone Positions", positions );
+    
+        
+    cone_height = outer_height  * 3/4 ;
+    
+    inner_large_diameter = large_diameter -0.6 ;
+    
+    inner_small_diameter = small_diameter -0.6 ;
+    
+    
+    for ( i=[ 0:len(positions)-1 ] ) 
+        translate ([ positions[i][0] + cone_plus_spacing/2, 
+                     positions[i][1] + cone_plus_spacing/2, 
+                     panel_thickness ]) {
+            
 
-module cone_back(){
-    }
-
-module segmented_back(){}
-
-module panel_with_cone_back(){
-union(){
-panel_front();
-cone_back();
+                difference () {
+                    cylinder(h=cone_height, d1=large_diameter, d2=small_diameter, center=false) ;
+                    cylinder(h=cone_height, d1=inner_large_diameter, d2=inner_small_diameter, center=false) ; 
+                    } ;
+                    
+                 difference () {
+                    cylinder(h=outer_height, d=large_diameter, center=false) ;
+                    cylinder(h=outer_height, d=inner_large_diameter, center=false) ; 
+                    } ;
+                 
+                } ;
+        
 }
+
+module panel_with_cone_back(type){
+    
+    union(){
+        
+    panel_front (type=type);
+    cone_back (back_depth, cone_front_opening, cone_back_opening);
+        
+    }
 }
+
+// SEGMENTED BACK //
+
+module segmented_back(){
+    }
 
 module panel_with_segmented_back(){
-    
     
 union(){
 panel_front();
 segmented_back();
 }
+
 }
 
 
-panel_front();
 
-// Destructive interference panels
+panel_with_cone_back (type="twolayers");
+
+
