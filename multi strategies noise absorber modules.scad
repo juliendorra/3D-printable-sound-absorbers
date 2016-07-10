@@ -25,11 +25,12 @@ panel_surface = panel_size*panel_size;
 back_depth = 60 ;
 
 // Cone back
-cone_front_opening = 25 ;
+cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
 cone_ratio = 3 ;
 cone_back_opening = cone_front_opening / cone_ratio ;
 cone_plus_spacing = cone_front_opening + 0.5 ;
 cone_by_lines = panel_size / cone_plus_spacing ;
+cone_relative_length_in_percent = 95 ;
 
 
 // PERFORATIONS //
@@ -176,7 +177,7 @@ module cone_back(outer_height, large_diameter, small_diameter){
     echo ( "Cone Positions", positions );
     
         
-    cone_height = outer_height  * 3/4 ;
+    cone_height = outer_height  * cone_relative_length_in_percent/100 ;
     
     inner_large_diameter = large_diameter -0.6 ;
     
