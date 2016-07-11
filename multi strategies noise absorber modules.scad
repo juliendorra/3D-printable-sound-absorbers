@@ -238,7 +238,7 @@ module panel_with_cone_back(type="twolayers", separator="tube"){
 
 module segmented_back(){
     
-    segment_wall = 2 ; //0.6
+    segment_wall = 0.6 ; //0.6
     shift = segment_wall ;
     
     translate ([0, 0, panel_thickness]) {
