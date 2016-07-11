@@ -28,26 +28,40 @@ back_depth = 60 ;
 cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
 cone_ratio = 3 ;
 cone_back_opening = cone_front_opening / cone_ratio ;
-cone_plus_spacing = cone_front_opening + 0.5 ;
+cone_plus_spacing = cone_front_opening + 0.1 ;
 cone_by_lines = panel_size / cone_plus_spacing ;
 cone_relative_length_in_percent = 95 ;
 
+// BASIC  //
+    
+module conduct (x, y, z, wall=0.6, closed_end = false) {
+        
+   inner_z = closed_end == true ? z-wall : z ; 
+  
+    difference () {
+        
+        cube ( [x, y, z], center=false ) ;
+        
+        translate ([wall/2, wall/2, 0]) cube ( [x-wall, y-wall, inner_z], center=false ) ; 
+        
+        } ; 
 
-// PERFORATIONS //
 
+    }
+    
+
+
+// perforations 
 // Given hole_density give me number of perforations to get this density.
 // It should be turned into an utility function so we can vary the number of perforations on multipanel structures
 
 number_of_perforations = ceil ( panel_surface * (perforation_density_in_percent/100) /perforation_surface ); 
 
 // Given a number of perforations needed, how much on each line if perforated on a square surface?
-
 function perforations_by_line_in_square (your_number_of_perforations) = ceil ( sqrt(your_number_of_perforations) ) ;
 
 // we make perforation positions a function so we can call it repeatedly when producing many modules at once, avoiding the same pattern of perforations on all modules
-
 // aligned on an uniform grid
-
 function perforations_positions (your_number_of_perforations, size_to_cover) = 
 
     [for (
@@ -165,7 +179,7 @@ function cone_coordinates () =
 
     ];
 
-module cone_back(outer_height, large_diameter, small_diameter){
+module cone_back(outer_height, large_diameter, small_diameter, separator="tube"){
     
     $fn = 24 ;
      
@@ -184,7 +198,7 @@ module cone_back(outer_height, large_diameter, small_diameter){
     inner_small_diameter = small_diameter -0.6 ;
     
     
-    for ( i=[ 0:len(positions)-1 ] ) 
+    for ( i=[ 0:len(positions)-1 ] ) {
         translate ([ positions[i][0] + cone_plus_spacing/2, 
                      positions[i][1] + cone_plus_spacing/2, 
                      panel_thickness ]) {
@@ -195,21 +209,27 @@ module cone_back(outer_height, large_diameter, small_diameter){
                     cylinder(h=cone_height, d1=inner_large_diameter, d2=inner_small_diameter, center=false) ; 
                     } ;
                     
-                 difference () {
+                if (separator == "tube") {            
+                    difference () {
                     cylinder(h=outer_height, d=large_diameter, center=false) ;
-                    cylinder(h=outer_height, d=inner_large_diameter, center=false) ; 
-                    } ;
-                 
+                    cylinder(h=outer_height, d=inner_large_diameter, center=false) ; } ;
+                } 
+                
+                if (separator == "wall") {
+                    translate ([0,0,outer_height/2]) difference () {
+                    cube([large_diameter, large_diameter, outer_height], center=true) ;
+                    cube([inner_large_diameter, inner_large_diameter, outer_height], center=true) ; } ; 
+                } 
                 } ;
-        
+            };
 }
 
-module panel_with_cone_back(type){
+module panel_with_cone_back(type="twolayers", separator="tube"){
     
     union(){
         
     panel_front (type=type);
-    cone_back (back_depth, cone_front_opening, cone_back_opening);
+    cone_back (outer_height=back_depth, large_diameter=cone_front_opening, small_diameter=cone_back_opening, separator=separator);
         
     }
 }
@@ -217,19 +237,50 @@ module panel_with_cone_back(type){
 // SEGMENTED BACK //
 
 module segmented_back(){
+    
+    segment_wall = 2 ; //0.6
+    shift = segment_wall ;
+    
+    translate ([0, 0, panel_thickness]) {
+    
+         // block
+    
+        conduct (x=panel_size, y=panel_size, z=back_depth, wall=segment_wall) ;
+    
+        // longer segment
+       conduct (x=panel_size, y=panel_size/3, z=back_depth*2/3, wall=segment_wall) ;
+            
+        
+        // middle segment
+        translate ([0, panel_size/3, 0]) conduct (x=panel_size, y=panel_size/3, z=back_depth*2/3, wall=segment_wall, closed_end = true) ;
+        
+        // smaller segment
+       translate ([0, panel_size*2/3, 0]) conduct (x=panel_size, y=panel_size/3, z=back_depth*1/3, wall=segment_wall, closed_end = true) ;
+     
+        
+    
+    } // end translate z = panel_thickness
     }
 
-module panel_with_segmented_back(){
+module panel_with_segmented_back(type){
     
 union(){
-panel_front();
+panel_front(type=type);
 segmented_back();
 }
 
 }
 
 
+// panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
 
-panel_with_cone_back (type="twolayers");
+ panel_with_segmented_back(type="twolayers") ; // // type: onelayer | twolayers
 
+
+
+
+module modifier_block_back () {
+// modifier block for Slic3r
+     translate ([0, 0, panel_thickness]) cube ([panel_size, panel_size, back_depth ]) ;
+}
 
