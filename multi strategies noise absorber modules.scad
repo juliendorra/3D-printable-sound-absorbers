@@ -28,8 +28,8 @@ back_depth = 60 ;
 cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
 cone_ratio = 3 ;
 cone_back_opening = cone_front_opening / cone_ratio ;
-cone_plus_spacing = cone_front_opening + 0.1 ;
-cone_by_lines = panel_size / cone_plus_spacing ;
+cone_plus_spacing = cone_front_opening + 0 ;
+cone_by_lines = panel_size / cone_plus_spacing;
 cone_relative_length_in_percent = 95 ;
 
 // BASIC  //
@@ -161,8 +161,8 @@ function cone_coordinates () =
 
     [for (
         
-     x_order = [ 0:cone_by_lines ], 
-     y_order = [ 0:cone_by_lines ]
+     x_order = [ 0:cone_by_lines-1 ], 
+     y_order = [ 0:cone_by_lines-1 ]
     
           ) 
         
@@ -190,35 +190,39 @@ module cone_back(outer_height, large_diameter, small_diameter, separator="tube")
         
     echo ( "Cone Positions", positions );
     
+    wall = 0.6 ;
         
     cone_height = outer_height  * cone_relative_length_in_percent/100 ;
     
-    inner_large_diameter = large_diameter -0.6 ;
+    inner_large_diameter = large_diameter - wall ;
     
-    inner_small_diameter = small_diameter -0.6 ;
+    inner_small_diameter = small_diameter - wall ;
     
     
     for ( i=[ 0:len(positions)-1 ] ) {
         translate ([ positions[i][0] + cone_plus_spacing/2, 
                      positions[i][1] + cone_plus_spacing/2, 
                      panel_thickness ]) {
-            
-
-                difference () {
-                    cylinder(h=cone_height, d1=large_diameter, d2=small_diameter, center=false) ;
-                    cylinder(h=cone_height, d1=inner_large_diameter, d2=inner_small_diameter, center=false) ; 
-                    } ;
                     
                 if (separator == "tube") {            
                     difference () {
                     cylinder(h=outer_height, d=large_diameter, center=false) ;
                     cylinder(h=outer_height, d=inner_large_diameter, center=false) ; } ;
+                    
+                    difference () {
+                    cylinder(h=cone_height, d1=large_diameter, d2=small_diameter, center=false) ;
+                    cylinder(h=cone_height, d1=inner_large_diameter, d2=inner_small_diameter, center=false) ; 
+                    } ;
                 } 
                 
                 if (separator == "wall") {
                     translate ([0,0,outer_height/2]) difference () {
                     cube([large_diameter, large_diameter, outer_height], center=true) ;
                     cube([inner_large_diameter, inner_large_diameter, outer_height], center=true) ; } ; 
+                    difference () {
+                    cylinder(h=cone_height, d1=large_diameter-wall*1.2, d2=small_diameter, center=false) ;
+                    cylinder(h=cone_height, d1=inner_large_diameter-wall*1.2, d2=inner_small_diameter, center=false) ; 
+                    } ;
                 } 
                 } ;
             };
@@ -272,12 +276,12 @@ segmented_back();
 }
 
 
-// panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
+panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
 
- panel_with_segmented_back(type="twolayers") ; // // type: onelayer | twolayers
+// panel_with_segmented_back(type="twolayers") ; // // type: onelayer | twolayers
 
 
-
+// modifier_block_back() ;
 
 module modifier_block_back () {
 // modifier block for Slic3r
