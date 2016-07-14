@@ -1,10 +1,14 @@
-///Noise absorber modules targeted at FDM low-cost, low definition 3D printing
-//They are 3 modules, using 3 noise absorbption strategies: 
+///Noise absorber modules targeted at FDM low-cost, low definition 3D printers ($300-$2000)
+//They are several modules, using different noise absorbtion strategies: 
+
 // 1. Micro Perforated Panels with cone backing, 
 // 2. Micro Perforated Panels with 3 length tunnel backing
-// 3. Destructive interference
+// 3. Destructive interference – hard to tune, still quite large
+// 4. Micro Perforated Panels with Coplanar coiled air chamber – allow low frequency absorption with very thin panels
+
 // Each strategy is a independant module that will have it's own absorption profile and drawbacks to be tested experimentally
-// By combining the modules in various way, we could achieve custom absorption profiles, and maybe wider band absorption
+// Modules are parametrized, and each strategy can be adjusted, giving a wide range of different modules: different depth of backing, different porosity, different channel length…
+// By combining these modules we could achieve custom absorption profiles and wider band absorption.
 // We can combine the modules in bigger panels directly in OpenSCDAD for direct printing of fully assembled sections, or print every module individually for manual assembly on the targeted surface.
 
 
@@ -153,8 +157,6 @@ difference () {
     
     }   
     
-
-
 // CONE BACK //
 
 function cone_coordinates () =  
@@ -276,10 +278,78 @@ segmented_back();
 }
 
 
-panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
+// COPLANAR COILED AIR CHANMBER //
 
-// panel_with_segmented_back(type="twolayers") ; // // type: onelayer | twolayers
+module coil_angle (length, wall) { 
+    
+    cube ( [ length, wall, back_depth] ) ; 
+    translate ([ length, 0,0]) rotate ([0, 0, 90]) cube ( [ length, wall, back_depth] ) ;
+    }
 
+module coil(coil_total_width, coil_conduct_width) {
+    
+    wall=panel_thickness ;
+    
+   #cube ( [ coil_total_width, wall, back_depth] ) ;
+    
+//    angles_to_create = ceil(coil_total_width/coil_conduct_width) ;
+    angles_to_create = 2 ;
+    
+    translate ([ coil_total_width, wall ,0]) rotate ([0, 0, 90])  {
+    for ( i = [ angles_to_create : -1 : 1 ] ) {
+        
+        length = i/angles_to_create*coil_total_width ; // ex. 5/5th, 4/5th… 
+  
+        
+        if (i%2 == 1) { slide_by = coil_total_width ; }
+           else { slide_by =  coil_total_width - length ; }
+        
+        angle = (angles_to_create-i)*180 ;
+        
+        move = [slide_by, slide_by, 0 ] ;
+        
+        rotate ([0, 0, angle])  translate (move) 
+             coil_angle ( length = length, wall = wall) ;
+        
+     } // end for
+    } //end translate
+   } // end module
+
+module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width) {
+
+
+// local_perforation_coordinates = perforations_positions(
+//            your_number_of_perforations=number_of_perforations, 
+//            size_to_cover=panel_size);
+//    
+// for ( i=[ 0:len(local_perforation_coordinates)-1 ]  ) 
+//        translate ([ local_perforation_coordinates[i][0], local_perforation_coordinates[i][1], 0 ]) {
+            
+            coil(coil_total_width, coil_conduct_width) ;
+        //}
+    
+// starts from the origin of the hole 
+
+
+
+}
+
+module panel_with_coplanar_coiled_air_chamber(type){
+union(){
+//panel_front(type=type);
+coplanar_coiled_air_chamber(coil_total_width = 5, coil_conduct_width=2);
+}
+}
+
+
+
+// How to call the modules : 
+
+//panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
+
+// panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
+
+panel_with_coplanar_coiled_air_chamber (type="twolayers") ; // type: onelayer | twolayers
 
 // modifier_block_back() ;
 
