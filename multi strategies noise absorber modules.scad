@@ -22,11 +22,11 @@ perforation_surface = perforation_size*perforation_size;
 
 panel_thickness = 0.8; // must be equal or slightly more than perforation diameter according to the litterature [ref needed - check if it's not the reverse !]
 
-panel_size = 50;
+panel_size = 10;
 panel_surface = panel_size*panel_size;
 
 // Back
-back_depth = 60 ;
+back_depth = 20 ;
 
 // Cone back
 cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
@@ -287,57 +287,51 @@ module coil_angle (length, wall) {
     }
 
 module coil(coil_total_width, coil_conduct_width) {
+   
+    wall= 0.6;
+//  angles_to_create = ceil(coil_total_width / (coil_conduct_width+wall) ) ;
+    angles_to_create = 5 ;
+ 
     
-    wall=panel_thickness ;
+    x_list = [ 5, 0, 4, 1, 3] ;
+    y_list = [ 0, 5, 1, 4, 2] ;
+    length_list = [ 5, 4, 3, 2, 1] ;
     
-   #cube ( [ coil_total_width, wall, back_depth] ) ;
     
-//    angles_to_create = ceil(coil_total_width/coil_conduct_width) ;
-    angles_to_create = 2 ;
-    
-    translate ([ coil_total_width, wall ,0]) rotate ([0, 0, 90])  {
-    for ( i = [ angles_to_create : -1 : 1 ] ) {
-        
-        length = i/angles_to_create*coil_total_width ; // ex. 5/5th, 4/5th… 
+      #cube ( [ coil_total_width, wall, back_depth] ) ; // first outside wall
   
+    for ( i = [ 0 : angles_to_create-1 ] ) { // off by one !
         
-        if (i%2 == 1) { slide_by = coil_total_width ; }
-           else { slide_by =  coil_total_width - length ; }
-        
-        angle = (angles_to_create-i)*180 ;
-        
-        move = [slide_by, slide_by, 0 ] ;
-        
-        rotate ([0, 0, angle])  translate (move) 
+        angle = (i*180)+90 ; 
+        length = length_list[i]/angles_to_create * coil_total_width ; // ex. 4/5th of coil_total_width
+         
+        translate ( [x_list[i], y_list[i], 0 ] ) rotate ([0, 0, angle])  
              coil_angle ( length = length, wall = wall) ;
         
      } // end for
-    } //end translate
+   
    } // end module
 
-module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width) {
+module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
 
+ translate ([0, 0, panel_thickness]) {
 
-// local_perforation_coordinates = perforations_positions(
-//            your_number_of_perforations=number_of_perforations, 
-//            size_to_cover=panel_size);
-//    
-// for ( i=[ 0:len(local_perforation_coordinates)-1 ]  ) 
-//        translate ([ local_perforation_coordinates[i][0], local_perforation_coordinates[i][1], 0 ]) {
-            
-            coil(coil_total_width, coil_conduct_width) ;
-        //}
+ local_perforation_coordinates = perforations_positions( your_number_of_perforations=number_of_perforations, size_to_cover=panel_size);
     
-// starts from the origin of the hole 
-
-
-
+ for ( i=[ 0:len(local_perforation_coordinates)-1 ]  ) // starts from the origin of the hole 
+     
+        translate ([ local_perforation_coordinates[i][0]-wall, local_perforation_coordinates[i][1]-wall, 0 ]) {
+            
+            coil(coil_total_width, coil_conduct_width, wall) ;
+        }
+    
+    } // END translate
 }
 
 module panel_with_coplanar_coiled_air_chamber(type){
 union(){
-//panel_front(type=type);
-coplanar_coiled_air_chamber(coil_total_width = 5, coil_conduct_width=2);
+%panel_front(type=type);
+coplanar_coiled_air_chamber(coil_total_width = 5, coil_conduct_width = 2, wall = 0.6);
 }
 }
 
