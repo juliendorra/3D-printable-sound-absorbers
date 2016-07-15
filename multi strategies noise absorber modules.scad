@@ -22,11 +22,11 @@ perforation_surface = perforation_size*perforation_size;
 
 panel_thickness = 0.8; // must be equal or slightly more than perforation diameter according to the litterature [ref needed - check if it's not the reverse !]
 
-panel_size = 10;
+panel_size = 50;
 panel_surface = panel_size*panel_size;
 
 // Back
-back_depth = 20 ;
+back_depth = 2 ;
 
 // Cone back
 cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
@@ -35,6 +35,12 @@ cone_back_opening = cone_front_opening / cone_ratio ;
 cone_plus_spacing = cone_front_opening + 0 ;
 cone_by_lines = panel_size / cone_plus_spacing;
 cone_relative_length_in_percent = 95 ;
+
+// Coiled air chamber back
+
+coil_total_width = 5 ; 
+coil_conduct_width = 2 ; 
+wall = 0.4 ;
 
 // BASIC  //
     
@@ -101,13 +107,13 @@ module perforations (perforation_coordinates){
     
     }
 
-module panel_front(type) {
-    if (type == "onelayer") { panel_front_one_layer_with_single_holes() ; }
-    else { panel_front_two_layers_with_grooves () ; }
+module panel_front(type, size_extension=0) {
+    if (type == "onelayer") { panel_front_one_layer_with_single_holes(size_extension) ; }
+    else { panel_front_two_layers_with_grooves (size_extension) ; }
     }   
 
 
-module panel_front_one_layer_with_single_holes(){
+module panel_front_one_layer_with_single_holes(size_extension){
     
     local_perforation_coordinates = perforations_positions(
             your_number_of_perforations=number_of_perforations, 
@@ -116,7 +122,7 @@ module panel_front_one_layer_with_single_holes(){
    echo ("Perforations coordinates", local_perforation_coordinates );
     
   linear_extrude (height= panel_thickness) difference () {
-        square(panel_size);
+        square(panel_size+size_extension);
         #perforations (local_perforation_coordinates);
     } 
    
@@ -126,7 +132,7 @@ module panel_front_one_layer_with_single_holes(){
 
 module perforations_using_grooves (perforation_coordinates) {
 
-    for ( i=[ 0:len(perforation_coordinates)-1 ] ) {
+    for ( i=[ 0:len(perforation_coordinates)-1 ] ) { // off by one
         
         translate ([ perforation_coordinates[i][0], 0, 0]) // x index
     
@@ -141,7 +147,7 @@ module perforations_using_grooves (perforation_coordinates) {
     }
     
 
-module panel_front_two_layers_with_grooves () {
+module panel_front_two_layers_with_grooves (size_extension) {
    
     
     local_perforation_coordinates = perforations_positions(
@@ -151,7 +157,7 @@ module panel_front_two_layers_with_grooves () {
    echo ("Perforations coordinates", local_perforation_coordinates );
     
 difference () {
-          linear_extrude (height= panel_thickness) square(panel_size);
+          linear_extrude (height= panel_thickness) square(panel_size+size_extension);
         #perforations_using_grooves (local_perforation_coordinates);
     } 
     
@@ -286,19 +292,17 @@ module coil_angle (length, wall) {
     translate ([ length, 0,0]) rotate ([0, 0, 90]) cube ( [ length, wall, back_depth] ) ;
     }
 
-module coil(coil_total_width, coil_conduct_width) {
+module coil(coil_total_width, coil_conduct_width, wall) {
    
-    wall= 0.6;
 //  angles_to_create = ceil(coil_total_width / (coil_conduct_width+wall) ) ;
     angles_to_create = 5 ;
- 
     
     x_list = [ 5, 0, 4, 1, 3] ;
     y_list = [ 0, 5, 1, 4, 2] ;
     length_list = [ 5, 4, 3, 2, 1] ;
     
     
-      #cube ( [ coil_total_width, wall, back_depth] ) ; // first outside wall
+     cube ( [ coil_total_width, wall, back_depth] ) ; // first outside wall
   
     for ( i = [ 0 : angles_to_create-1 ] ) { // off by one !
         
@@ -309,6 +313,9 @@ module coil(coil_total_width, coil_conduct_width) {
              coil_angle ( length = length, wall = wall) ;
         
      } // end for
+     
+         #translate ([0, 0, 0]) cube ( [ wall, coil_conduct_width, back_depth] ) ; // close the end of conduct
+
    
    } // end module
 
@@ -320,18 +327,20 @@ module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
     
  for ( i=[ 0:len(local_perforation_coordinates)-1 ]  ) // starts from the origin of the hole 
      
-        translate ([ local_perforation_coordinates[i][0]-wall, local_perforation_coordinates[i][1]-wall, 0 ]) {
+        translate ([ local_perforation_coordinates[i][0], local_perforation_coordinates[i][1], 0 ]) {
             
-            coil(coil_total_width, coil_conduct_width, wall) ;
+           translate ([-coil_total_width/2+wall*2, -coil_total_width/2+wall*2, 0]) coil(coil_total_width, coil_conduct_width, wall) ;
         }
     
     } // END translate
 }
 
+module panel_solid () {} 
+
 module panel_with_coplanar_coiled_air_chamber(type){
 union(){
-%panel_front(type=type);
-coplanar_coiled_air_chamber(coil_total_width = 5, coil_conduct_width = 2, wall = 0.6);
+panel_front(type=type, size_extension=wall*2);
+coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall);    
 }
 }
 
@@ -344,6 +353,9 @@ coplanar_coiled_air_chamber(coil_total_width = 5, coil_conduct_width = 2, wall =
 // panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
 
 panel_with_coplanar_coiled_air_chamber (type="twolayers") ; // type: onelayer | twolayers
+
+
+
 
 // modifier_block_back() ;
 
