@@ -14,21 +14,23 @@
 
 // Micro Perforated Panels 
 
-perforation_density_in_percent = 1; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
+perforation_density_in_percent = 3; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
 
-perforation_size = 0.8; // must be sub-milimeter to be effective. Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the dual layer technique.
+perforation_size = 4; // must be sub-milimeter to be effective. Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the dual layer technique.
 
 perforation_surface = perforation_size*perforation_size;
 
 panel_thickness = 0.8; // must be equal or slightly more than perforation diameter according to the litterature [ref needed - check if it's not the reverse !]
 
-panel_size = 50;
+panel_size = 100;
 panel_surface = panel_size*panel_size;
 
 // Back
-back_depth = 2 ;
+back_depth = 4 ;
+
 
 // Cone back
+
 cone_front_opening = 25 ; // 25mm value derived from "plastic horn arrays 144 per square foot" = 12 per 300mm. in Sound Absorptive Materials to Meet Specials Requirement Wirt 1975
 cone_ratio = 3 ;
 cone_back_opening = cone_front_opening / cone_ratio ;
@@ -36,11 +38,13 @@ cone_plus_spacing = cone_front_opening + 0 ;
 cone_by_lines = panel_size / cone_plus_spacing;
 cone_relative_length_in_percent = 95 ;
 
+
 // Coiled air chamber back
 
-coil_total_width = 5 ; 
-coil_conduct_width = 2 ; 
-wall = 0.4 ;
+coil_total_width = 20 ; 
+coil_conduct_width = 4; 
+wall = 0.8 ;
+
 
 // BASIC  //
     
@@ -61,7 +65,7 @@ module conduct (x, y, z, wall=0.6, closed_end = false) {
     
 
 
-// perforations 
+// Perforations 
 // Given hole_density give me number of perforations to get this density.
 // It should be turned into an utility function so we can vary the number of perforations on multipanel structures
 
@@ -294,27 +298,39 @@ module coil_angle (length, wall) {
 
 module coil(coil_total_width, coil_conduct_width, wall) {
    
-//  angles_to_create = ceil(coil_total_width / (coil_conduct_width+wall) ) ;
-    angles_to_create = 5 ;
+   angles_to_create = floor( coil_total_width/ (coil_conduct_width+wall) ) ; // ex. 5 ;
+               
+    x_list = [ for ( i = [ 0 : 0.5 : floor(angles_to_create/2) ] )   // ex. i = 0, 0, 1, 1, 2
+                     
+                   (i*2) % 2 == 0 ? angles_to_create-floor(i) : floor(i) ] ; // ex. [ 5, 0, 4, 1, 3 ]
+              
     
-    x_list = [ 5, 0, 4, 1, 3] ;
-    y_list = [ 0, 5, 1, 4, 2] ;
-    length_list = [ 5, 4, 3, 2, 1] ;
+     y_list = [ for ( i = [ 0 : 0.5 : floor(angles_to_create/2) ] )   // ex. i = 0, 0, 1, 1, 2
+                     
+                   (i*2) % 2 == 0 ? floor(i) : angles_to_create-floor(i) ] ; // ex. [ 0, 5, 1, 4, 2 ]
+     
     
-    
-     cube ( [ coil_total_width, wall, back_depth] ) ; // first outside wall
+    length_list = [ for ( i = [ angles_to_create : -1 : 1 ] ) i ] ; // ex. [ 5, 4, 3, 2, 1 ]
+        
+    unit_size = 1 / angles_to_create * coil_total_width     ; // ex. 1/5th of coil_total_width
+   
+    #cube ( [ coil_total_width, wall, back_depth] ) ; // first outside wall
   
-    for ( i = [ 0 : angles_to_create-1 ] ) { // off by one !
+    for ( i = [ 0 : 1 : angles_to_create-1 ] ) { // off by one -1, and we skip the last, too narrow angle, so -2
         
         angle = (i*180)+90 ; 
+        
         length = length_list[i]/angles_to_create * coil_total_width ; // ex. 4/5th of coil_total_width
-         
-        translate ( [x_list[i], y_list[i], 0 ] ) rotate ([0, 0, angle])  
+        
+        x_position = x_list[i] * unit_size  ;
+        y_position = y_list[i] * unit_size  ;   
+        
+        translate ( [x_position, y_position, 0 ] ) rotate ([0, 0, angle])  
              coil_angle ( length = length, wall = wall) ;
         
      } // end for
      
-         #translate ([0, 0, 0]) cube ( [ wall, coil_conduct_width, back_depth] ) ; // close the end of conduct
+         #translate ([0, wall, 0]) cube ( [ wall, coil_conduct_width+wall, back_depth] ) ; // close the end of conduct
 
    
    } // end module
@@ -329,7 +345,7 @@ module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
      
         translate ([ local_perforation_coordinates[i][0], local_perforation_coordinates[i][1], 0 ]) {
             
-           translate ([-coil_total_width/2+wall*2, -coil_total_width/2+wall*2, 0]) coil(coil_total_width, coil_conduct_width, wall) ;
+           translate ([-coil_total_width/2+coil_conduct_width, -coil_total_width/2, 0]) coil(coil_total_width, coil_conduct_width, wall) ;
         }
     
     } // END translate
@@ -337,10 +353,10 @@ module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
 
 module panel_solid () {} 
 
-module panel_with_coplanar_coiled_air_chamber(type){
+module panel_with_coplanar_coiled_air_chamber(type, size_extension=coil_conduct_width){
 union(){
-panel_front(type=type, size_extension=wall*2);
-coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall);    
+panel_front(type=type, size_extension=size_extension);
+color ("blue") coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall);    
 }
 }
 
@@ -352,7 +368,7 @@ coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall);
 
 // panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
 
-panel_with_coplanar_coiled_air_chamber (type="twolayers") ; // type: onelayer | twolayers
+panel_with_coplanar_coiled_air_chamber (type="twolayers", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
 
 
