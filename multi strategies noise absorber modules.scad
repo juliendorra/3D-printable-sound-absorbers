@@ -1,32 +1,45 @@
-///Noise absorber modules targeted at FDM low-cost, low definition 3D printers ($300-$2000)
-//They are several modules, using different noise absorbtion strategies: 
+///Noise absorber structures targeted at Fused Deposition Modeling, low-cost, low definition 3D printers ($300-$2000)
+//They are several modules, using different noise absorption strategies: 
 
 // 1. Micro Perforated Panels with cone backing, 
-// 2. Micro Perforated Panels with 3 length tunnel backing
-// 3. Destructive interference – hard to tune, still quite large
-// 4. Micro Perforated Panels with Coplanar coiled air chamber – allow low frequency absorption with very thin panels
 
-// Each strategy is a independant module that will have it's own absorption profile and drawbacks to be tested experimentally
+// 2. Micro Perforated Panels with 3 length tunnel backing
+
+// 3. Destructive interference – hard to tune, still quite large [not implemented]
+
+// 4. Micro Perforated Panels with Coplanar coiled air chamber – allow low frequency absorption with very thin panels [preliminary, brittle implementation]
+
+// Each strategy is an independant module that will have it's own absorption profile and drawbacks to be tested experimentally
 // Modules are parametrized, and each strategy can be adjusted, giving a wide range of different modules: different depth of backing, different porosity, different channel length…
 // By combining these modules we could achieve custom absorption profiles and wider band absorption.
 // We can combine the modules in bigger panels directly in OpenSCDAD for direct printing of fully assembled sections, or print every module individually for manual assembly on the targeted surface.
 
 
+// About Two Layers panels: 
+// When trying to print a surface with sub-milimeters holes using a lowcost FDM printer, most of the time the holes get clogged by the plastic expansion and movement imprecision. You can use many slicing tricks to try and overcome this, but the challenge is to design a part that will consistently print on a wide range of 3D printers
+// Thus, Two Layers panels are a dedicated design that can consistently get sub-milimeters holes on low cost FDM printers, by superimposing two perpendicular layers of stripes. Stripes print much more consistently than holes, and by superimposing them at 90º we create square holes of sub-milimeter width.
+
+
+// SETTINGS //
+
 // Micro Perforated Panels 
 
 perforation_density_in_percent = 3; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
+    //Exception: For Coplanar Coiled 3 is a good default
 
 perforation_size = 4; // must be sub-milimeter to be effective. Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the dual layer technique.
+    //Exception: For Coplanar Coiled 4mm seems to be the default
 
 perforation_surface = perforation_size*perforation_size;
 
 panel_thickness = 0.8; // must be equal or slightly more than perforation diameter according to the litterature [ref needed - check if it's not the reverse !]
 
-panel_size = 100;
+panel_size = 150;
 panel_surface = panel_size*panel_size;
 
 // Back
-back_depth = 4 ;
+back_depth = 50 ; // a good target range is 50 to 80mm
+//Exception: For Coplanar Coiled 4mm might be sufficient if we believe the latest litterature [ref needed].
 
 
 // Cone back
@@ -45,6 +58,8 @@ coil_total_width = 20 ;
 coil_conduct_width = 4; 
 wall = 0.8 ;
 
+
+// MODULES //
 
 // BASIC  //
     
@@ -364,19 +379,42 @@ color ("blue") coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width,
 
 // How to call the modules : 
 
-//panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall
+//panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall 
 
-// panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
+panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers 
 
-panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
+// panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
 
 
+
+//---------------------------------------//
+
+// SLICING AND PRINTING AIDS
 
 // modifier_block_back() ;
 
-module modifier_block_back () {
-// modifier block for Slic3r
+circular_brim () ;
+
+module modifier_block_back () { // modifier block for use in Slic3r
+
      translate ([0, 0, panel_thickness]) cube ([panel_size, panel_size, back_depth ]) ;
 }
+
+module circular_brim (diameter=30, printer_first_layer_height=0.30) { // to limit warping in corners
+    
+  difference () {  
+    
+  union () {  
+  translate  ( [0, 0, 0 ] )   cylinder (d = diameter, h = printer_first_layer_height)  ;
+  translate  ( [panel_size, 0, 0 ] )   cylinder (d = diameter, h = printer_first_layer_height)  ;
+  translate  ( [0, panel_size, 0 ] )   cylinder (d = diameter, h = printer_first_layer_height)  ;
+  translate  ( [panel_size, panel_size, 0 ] )   cylinder (d = diameter, h = printer_first_layer_height)  ;
+  }
+  
+  cube ( [panel_size, panel_size, printer_first_layer_height] ) ;    
+      
+      
+  }
+} 
 
