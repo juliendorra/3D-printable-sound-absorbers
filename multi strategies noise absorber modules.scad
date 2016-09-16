@@ -345,7 +345,7 @@ module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
      
         translate ([ local_perforation_coordinates[i][0], local_perforation_coordinates[i][1], 0 ]) {
             
-           translate ([-coil_total_width/2+coil_conduct_width, -coil_total_width/2, 0]) coil(coil_total_width, coil_conduct_width, wall) ;
+           translate ([-coil_total_width/2+coil_conduct_width+wall/2, -coil_total_width/2-wall/2, 0]) coil(coil_total_width, coil_conduct_width, wall) ;
         }
     
     } // END translate
@@ -368,7 +368,7 @@ color ("blue") coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width,
 
 // panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
 
-panel_with_coplanar_coiled_air_chamber (type="twolayers", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
+panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
 
 
