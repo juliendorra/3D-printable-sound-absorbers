@@ -386,17 +386,46 @@ panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers
 // panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
 
+//-------- FINISHING MODULE -------------//
 
+// GLUEING PAD
 
-//---------------------------------------//
+glueing_pad () ;
+
+module glueing_pad (size=40, thickness=0.30) { // to limit warping in corners
+    
+translate ([0, 0, panel_thickness + back_depth]) 
+    intersection () {
+    
+  union () {  
+  translate  ( [0, 0, 0 ] )  
+      rotate ([0, 0, 45]) 
+      cube ([size, size, thickness], center=true)  ;
+   translate  ( [panel_size, 0, 0 ] )  
+      rotate ([0, 0, 45]) 
+      cube ([size, size, thickness], center=true) ;
+  translate  ( [0, panel_size, 0 ] )  
+      rotate ([0, 0, 45]) cube ([size, size, thickness], center=true) ;
+  translate  ( [panel_size, panel_size, 0 ] )  
+      rotate ([0, 0, 45]) cube ([size, size, thickness], center=true) ;
+  }
+  
+  translate  ( [0, 0, -thickness/2 ] ) cube ( [panel_size, panel_size, thickness] ) ;       
+      
+      } 
+}
+
 
 // SLICING AND PRINTING AIDS
+
+// How to call the printing aid modules : 
 
 // modifier_block_back() ;
 
 circular_brim () ;
 
-module modifier_block_back () { // modifier block for use in Slic3r
+
+module modifier_block_back () { // modifier block for use in Slic3r, to apply different printing settings to the panel and the back
 
      translate ([0, 0, panel_thickness]) cube ([panel_size, panel_size, back_depth ]) ;
 }
