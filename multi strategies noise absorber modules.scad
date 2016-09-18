@@ -16,7 +16,7 @@
 
 
 // About Two Layers panels: 
-// When trying to print a surface with sub-milimeters holes using a lowcost FDM printer, most of the time the holes get clogged by the plastic expansion and movement imprecision. You can use many slicing tricks to try and overcome this, but the challenge is to design a part that will consistently print on a wide range of 3D printers
+// When trying to print a surface with sub-milimeters holes using a low-cost FDM 3D printer, most of the time the holes get clogged by the plastic expansion and movement imprecisions. You can use many slicing tricks to try and overcome this, but the challenge is to design a part that will consistently print on a wide range of 3D printers without specific slicing settings.
 // Thus, Two Layers panels are a dedicated design that can consistently get sub-milimeters holes on low cost FDM printers, by superimposing two perpendicular layers of stripes. Stripes print much more consistently than holes, and by superimposing them at 90º we create square holes of sub-milimeter width.
 
 
@@ -24,10 +24,13 @@
 
 // Micro Perforated Panels 
 
-perforation_density_in_percent = 3; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
+perforation_density_in_percent = 1; // total surface of the holes. Less than 2% is better according to the litterature: [ref needed]
+    // 1 percent is a good default  
     //Exception: For Coplanar Coiled 3 is a good default
 
-perforation_size = 4; // must be sub-milimeter to be effective. Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the dual layer technique.
+perforation_size = 0.8 ; // must be sub-milimeter to be effective. 
+    //Researchers often finds 0.5mm diameter to be very effective, but a real challenge for Fused Filament Deposition 3D printers, even with the two layers technique.
+    // 0.8 is a good default that should print well using Two Layers setting.   
     //Exception: For Coplanar Coiled 4mm seems to be the default
 
 perforation_surface = perforation_size*perforation_size;
@@ -205,8 +208,20 @@ function cone_coordinates () =
      [ x, y ] 
 
     ];
+    
+module cone_with_wall (outer_height, large_diameter, inner_large_diameter, cone_height, small_diameter, inner_small_diameter) {
+    
+      translate ([0,0,outer_height/2]) difference () {
+                    cube([large_diameter, large_diameter, outer_height], center=true) ;
+                    cube([inner_large_diameter, inner_large_diameter, outer_height], center=true) ; } ; 
+                    difference () {
+                    cylinder(h=cone_height, d1=large_diameter-wall*1.2, d2=small_diameter, center=false) ;
+                    cylinder(h=cone_height, d1=inner_large_diameter-wall*1.2, d2=inner_small_diameter, center=false) ; 
+                    } ;
+    
+    }
 
-module cone_back(outer_height, large_diameter, small_diameter, separator="tube"){
+module cone_back(outer_height, large_diameter, small_diameter, separator="wall"){
     
     $fn = 24 ;
      
@@ -243,14 +258,10 @@ module cone_back(outer_height, large_diameter, small_diameter, separator="tube")
                 } 
                 
                 if (separator == "wall") {
-                    translate ([0,0,outer_height/2]) difference () {
-                    cube([large_diameter, large_diameter, outer_height], center=true) ;
-                    cube([inner_large_diameter, inner_large_diameter, outer_height], center=true) ; } ; 
-                    difference () {
-                    cylinder(h=cone_height, d1=large_diameter-wall*1.2, d2=small_diameter, center=false) ;
-                    cylinder(h=cone_height, d1=inner_large_diameter-wall*1.2, d2=inner_small_diameter, center=false) ; 
-                    } ;
-                } 
+                    
+                  cone_with_wall (outer_height, large_diameter, inner_large_diameter, cone_height, small_diameter, inner_small_diameter) ;
+                
+                    } 
                 } ;
             };
 }
@@ -366,7 +377,6 @@ module coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width, wall) {
     } // END translate
 }
 
-module panel_solid () {} 
 
 module panel_with_coplanar_coiled_air_chamber(type, size_extension=coil_conduct_width){
 union(){
@@ -379,9 +389,9 @@ color ("blue") coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width,
 
 // How to call the modules : 
 
-//panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall 
+panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall 
 
-panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers 
+//panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers 
 
 // panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
