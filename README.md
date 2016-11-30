@@ -1,4 +1,4 @@
-# 3D Printable Noise Absorbers 
+# 3D Printable Sound Absorbers 
 
 Noise absorbing structures targeted at Fused Deposition Modeling, low-cost, low definition 3D printers — the ones you can buy for $300 up to $2000. Based on acoustic research litterature from 1975 up to 2016.
 
@@ -10,7 +10,7 @@ Use them to reduce noise at home, reflected by walls, a balcony ceiling, in an o
 ![Front of multiple panels with 0.8mm square holes](pictures/Photo 12-07-2016 12 49 00.jpg)
 *Front of the composited panel with 0.8mm square holes*
 
-## Why 3D print noise absorbers?
+## Why 3D print sound absorbers?
 
 ### The problem
 Managing noise is a constant issue in homes, offices and commercial spaces.
