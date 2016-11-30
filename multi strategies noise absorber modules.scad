@@ -12,7 +12,7 @@
 // Each strategy is an independant module that will have it's own absorption profile and drawbacks to be tested experimentally
 // Modules are parametrized, and each strategy can be adjusted, giving a wide range of different modules: different depth of backing, different porosity, different channel length…
 // By combining these modules we could achieve custom absorption profiles and wider band absorption.
-// We can combine the modules in bigger panels directly in OpenSCDAD for direct printing of fully assembled sections, or print every module individually for manual assembly on the targeted surface.
+// We can combine the modules in bigger panels directly in OpenSCDAD for direct printing of fully assembled sections, or print each module individually for manual assembly on the targeted surface.
 
 
 // About Two Layers panels: 
@@ -278,9 +278,9 @@ module panel_with_cone_back(type="twolayers", separator="tube"){
 
 // SEGMENTED BACK //
 
-module segmented_back(){
+module segmented_back(wall = 0.6){
     
-    segment_wall = 0.6 ; //0.6
+    segment_wall = wall ;
     shift = segment_wall ;
     
     translate ([0, 0, panel_thickness]) {
@@ -294,21 +294,68 @@ module segmented_back(){
             
         
         // middle segment
-        translate ([0, panel_size/3, 0]) conduct (x=panel_size, y=panel_size/3, z=back_depth*2/3, wall=segment_wall, closed_end = true) ;
+        translate ([0, panel_size/3, 0]) 
+            conduct (x=panel_size, y=panel_size/3, z=back_depth*2/3, wall=segment_wall, closed_end = true) ;
         
         // smaller segment
-       translate ([0, panel_size*2/3, 0]) conduct (x=panel_size, y=panel_size/3, z=back_depth*1/3, wall=segment_wall, closed_end = true) ;
+       translate ([0, panel_size*2/3, 0]) 
+            conduct (x=panel_size, y=panel_size/3, z=back_depth*1/3, wall=segment_wall, closed_end = true) ;
      
         
     
     } // end translate z = panel_thickness
     }
+    
+function separator_coordinates (number_of_separators, spacing) =  
 
-module panel_with_segmented_back(type){
+    [for (
+        
+     x_order = [ 1:number_of_separators-1 ] // start at 1 because no need for a separator a the origin, there's a wall already.
+    
+          ) 
+        
+     let ( 
+
+     x = spacing * x_order 
+
+           ) 
+     x 
+
+    ];
+    
+module segmented_back_separators(wall = 0.6, gap = 20) {
+    
+    separator_wall = wall ;
+    
+    spacing = (gap+separator_wall) ;
+    
+    number_of_separators = panel_size / spacing ;
+    
+    positions = separator_coordinates (
+        number_of_separators = number_of_separators , 
+        spacing = spacing
+         ) ;
+    
+    echo (positions) ;
+    
+    for ( i=[ 0:len(positions)-1 ] ) {
+        
+       translate ([ positions[i],  panel_size*1/3 , panel_thickness ])
+            cube ([ separator_wall, panel_size/3, back_depth*2/3 ]) ; 
+        
+       translate ([ positions[i],  panel_size*2/3 , panel_thickness ])
+            cube ([ separator_wall, panel_size/3, back_depth*1/3 ]);         
+        }
+    
+    
+}
+
+module panel_with_segmented_back(type="twolayers", wall= 0.6){
     
 union(){
-panel_front(type=type);
-segmented_back();
+panel_front(type=type) ;
+segmented_back(wall=wall) ;
+segmented_back_separators(wall=wall) ;
 }
 
 }
@@ -389,9 +436,9 @@ color ("blue") coplanar_coiled_air_chamber(coil_total_width, coil_conduct_width,
 
 // How to call the modules : 
 
-panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall 
+//panel_with_cone_back (type="twolayers", separator="wall"); // type: onelayer | twolayers, wall: tube | wall 
 
-//panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers 
+panel_with_segmented_back(type="twolayers") ; // type: onelayer | twolayers 
 
 // panel_with_coplanar_coiled_air_chamber (type="onelayer", size_extension=coil_conduct_width) ; // type: onelayer | twolayers, size_extension : coil_conduct_width
 
